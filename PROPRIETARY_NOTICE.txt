@@ -1,0 +1,9 @@
+HFC Reverse CAD
+Software Proprietario
+
+Este software e seus arquivos relacionados sao propriedade exclusiva de seus detentores legais.
+Nenhuma licenca open source e concedida por este repositorio.
+
+O uso, copia, modificacao, distribuicao, sublicenciamento ou engenharia reversa deste software sem autorizacao expressa por escrito e proibido.
+
+Todos os direitos reservados.
