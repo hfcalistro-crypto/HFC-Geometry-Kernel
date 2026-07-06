@@ -7,6 +7,7 @@ This module provides a compact and dependency-free representation of a
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Sequence
 
 from .point3d import Point3D
 from .vector3d import Vector3D
@@ -24,18 +25,26 @@ class Matrix4x4:
     rows: tuple[tuple[float, float, float, float], ...]
 
     def __post_init__(self) -> None:
-        """Validate the matrix structure after initialization."""
-        if len(self.rows) != 4:
+        """Validate the matrix shape and normalize the stored values."""
+        normalized_rows = self._normalize_rows(self.rows)
+        object.__setattr__(self, "rows", normalized_rows)
+
+    @staticmethod
+    def _normalize_rows(rows: Sequence[Sequence[float]]) -> tuple[tuple[float, float, float, float], ...]:
+        """Validate and normalize a 4x4 collection of rows."""
+        if not isinstance(rows, (list, tuple)):
+            raise TypeError("Matrix4x4 rows must be provided as a sequence")
+        if len(rows) != 4:
             raise ValueError("Matrix4x4 must contain exactly 4 rows")
 
-        for row_index, row in enumerate(self.rows):
+        normalized_rows: list[tuple[float, float, float, float]] = []
+        for row_index, row in enumerate(rows):
+            if not isinstance(row, (list, tuple)):
+                raise TypeError(f"Row {row_index} must be a sequence")
             if len(row) != 4:
                 raise ValueError(f"Row {row_index} must contain exactly 4 values")
-            for column_index, value in enumerate(row):
-                object.__setattr__(self, "rows", tuple(tuple(float(component) for component in row) for row in self.rows))
-                break
-            if column_index is not None:
-                break
+            normalized_rows.append(tuple(float(component) for component in row))
+        return tuple(normalized_rows)
 
     @classmethod
     def identity(cls) -> "Matrix4x4":
@@ -50,18 +59,21 @@ class Matrix4x4:
         )
 
     @classmethod
-    def from_rows(cls, rows: list[list[float]]) -> "Matrix4x4":
-        """Create a matrix from a list of four row vectors."""
-        if len(rows) != 4:
-            raise ValueError("Matrix4x4 requires exactly four rows")
+    def from_rows(cls, rows: Sequence[Sequence[float]]) -> "Matrix4x4":
+        """Create a matrix from a 4x4 sequence of row vectors.
 
-        normalized_rows: list[tuple[float, float, float, float]] = []
-        for row_index, row in enumerate(rows):
-            if len(row) != 4:
-                raise ValueError(f"Row {row_index} must contain exactly 4 values")
-            normalized_rows.append(tuple(float(value) for value in row))
+        Args:
+            rows: A sequence containing exactly four rows, each with four values.
 
-        return cls(tuple(normalized_rows))
+        Returns:
+            A new immutable Matrix4x4 instance.
+
+        Raises:
+            TypeError: If the provided rows are not a sequence of sequences.
+            ValueError: If the matrix does not contain exactly four rows or
+                any row does not contain exactly four values.
+        """
+        return cls(tuple(rows))
 
     def to_rows(self) -> list[list[float]]:
         """Return the matrix as a list of rows."""
@@ -104,9 +116,24 @@ class Matrix4x4:
 
     def _multiply_point(self, point: Point3D) -> Point3D:
         """Multiply the matrix by a Point3D instance."""
-        x = self.rows[0][0] * point.x + self.rows[0][1] * point.y + self.rows[0][2] * point.z + self.rows[0][3]
-        y = self.rows[1][0] * point.x + self.rows[1][1] * point.y + self.rows[1][2] * point.z + self.rows[1][3]
-        z = self.rows[2][0] * point.x + self.rows[2][1] * point.y + self.rows[2][2] * point.z + self.rows[2][3]
+        x = (
+            self.rows[0][0] * point.x
+            + self.rows[0][1] * point.y
+            + self.rows[0][2] * point.z
+            + self.rows[0][3]
+        )
+        y = (
+            self.rows[1][0] * point.x
+            + self.rows[1][1] * point.y
+            + self.rows[1][2] * point.z
+            + self.rows[1][3]
+        )
+        z = (
+            self.rows[2][0] * point.x
+            + self.rows[2][1] * point.y
+            + self.rows[2][2] * point.z
+            + self.rows[2][3]
+        )
         return Point3D(x, y, z)
 
     def _multiply_vector(self, vector: Vector3D) -> Vector3D:

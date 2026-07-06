@@ -1,3 +1,5 @@
+import pytest
+
 from src.geometry.matrix4x4 import Matrix4x4
 from src.geometry.point3d import Point3D
 from src.geometry.vector3d import Vector3D
@@ -77,3 +79,15 @@ def test_matrix_multiplies_vector3d() -> None:
 
     transformed = matrix * vector
     assert transformed.to_tuple() == (1.0, 4.0, 9.0)
+
+
+def test_invalid_matrix_raises_value_error() -> None:
+    with pytest.raises(ValueError):
+        Matrix4x4.from_rows(
+            [
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 1.0],
+                [0.0, 0.0, 0.0],
+            ]
+        )
