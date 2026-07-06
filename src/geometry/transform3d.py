@@ -7,7 +7,6 @@ consistent and extensible way.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 
 from .matrix4x4 import Matrix4x4
@@ -19,10 +18,8 @@ from .vector3d import Vector3D
 class Transform3D:
     """Represent an immutable 3D transformation using a 4x4 matrix.
 
-    The class exposes high-level constructors for common transformations
-    such as translation, scaling, and rotations around the coordinate axes.
-    It is designed to be simple, dependency-free, and compatible with the
-    point and vector primitives defined by the HGK.
+    The class exposes high-level constructors for the basic affine
+    transformations used by the HGK geometry primitives.
     """
 
     matrix: Matrix4x4
@@ -33,14 +30,29 @@ class Transform3D:
         return cls(Matrix4x4.identity())
 
     @classmethod
-    def translation(cls, dx: float, dy: float, dz: float) -> "Transform3D":
-        """Return a translation transformation."""
+    def translation(cls, tx: float, ty: float, tz: float) -> "Transform3D":
+        """Return a translation transformation.
+
+        Args:
+            tx: Translation along the x axis.
+            ty: Translation along the y axis.
+            tz: Translation along the z axis.
+
+        Returns:
+            A transformation that translates points by the provided offsets.
+
+        Raises:
+            TypeError: If any argument is not a real number.
+        """
+        cls._validate_scalar(tx, "tx")
+        cls._validate_scalar(ty, "ty")
+        cls._validate_scalar(tz, "tz")
         return cls(
             Matrix4x4.from_rows(
                 [
-                    [1.0, 0.0, 0.0, dx],
-                    [0.0, 1.0, 0.0, dy],
-                    [0.0, 0.0, 1.0, dz],
+                    [1.0, 0.0, 0.0, float(tx)],
+                    [0.0, 1.0, 0.0, float(ty)],
+                    [0.0, 0.0, 1.0, float(tz)],
                     [0.0, 0.0, 0.0, 1.0],
                 ]
             )
@@ -48,61 +60,28 @@ class Transform3D:
 
     @classmethod
     def scale(cls, sx: float, sy: float, sz: float) -> "Transform3D":
-        """Return a scaling transformation."""
-        return cls(
-            Matrix4x4.from_rows(
-                [
-                    [sx, 0.0, 0.0, 0.0],
-                    [0.0, sy, 0.0, 0.0],
-                    [0.0, 0.0, sz, 0.0],
-                    [0.0, 0.0, 0.0, 1.0],
-                ]
-            )
-        )
+        """Return a scaling transformation.
 
-    @classmethod
-    def rotation_x(cls, angle_radians: float) -> "Transform3D":
-        """Return a rotation around the X axis."""
-        cosine = math.cos(angle_radians)
-        sine = math.sin(angle_radians)
-        return cls(
-            Matrix4x4.from_rows(
-                [
-                    [1.0, 0.0, 0.0, 0.0],
-                    [0.0, cosine, -sine, 0.0],
-                    [0.0, sine, cosine, 0.0],
-                    [0.0, 0.0, 0.0, 1.0],
-                ]
-            )
-        )
+        Args:
+            sx: Scale factor along the x axis.
+            sy: Scale factor along the y axis.
+            sz: Scale factor along the z axis.
 
-    @classmethod
-    def rotation_y(cls, angle_radians: float) -> "Transform3D":
-        """Return a rotation around the Y axis."""
-        cosine = math.cos(angle_radians)
-        sine = math.sin(angle_radians)
-        return cls(
-            Matrix4x4.from_rows(
-                [
-                    [cosine, 0.0, sine, 0.0],
-                    [0.0, 1.0, 0.0, 0.0],
-                    [-sine, 0.0, cosine, 0.0],
-                    [0.0, 0.0, 0.0, 1.0],
-                ]
-            )
-        )
+        Returns:
+            A transformation that scales points and vectors.
 
-    @classmethod
-    def rotation_z(cls, angle_radians: float) -> "Transform3D":
-        """Return a rotation around the Z axis."""
-        cosine = math.cos(angle_radians)
-        sine = math.sin(angle_radians)
+        Raises:
+            TypeError: If any argument is not a real number.
+        """
+        cls._validate_scalar(sx, "sx")
+        cls._validate_scalar(sy, "sy")
+        cls._validate_scalar(sz, "sz")
         return cls(
             Matrix4x4.from_rows(
                 [
-                    [cosine, -sine, 0.0, 0.0],
-                    [sine, cosine, 0.0, 0.0],
-                    [0.0, 0.0, 1.0, 0.0],
+                    [float(sx), 0.0, 0.0, 0.0],
+                    [0.0, float(sy), 0.0, 0.0],
+                    [0.0, 0.0, float(sz), 0.0],
                     [0.0, 0.0, 0.0, 1.0],
                 ]
             )
@@ -110,19 +89,25 @@ class Transform3D:
 
     def apply_to_point(self, point: Point3D) -> Point3D:
         """Apply the transformation to a Point3D instance."""
+        if not isinstance(point, Point3D):
+            raise TypeError("point must be a Point3D")
         return self.matrix * point
 
     def apply_to_vector(self, vector: Vector3D) -> Vector3D:
         """Apply the transformation to a Vector3D instance."""
+        if not isinstance(vector, Vector3D):
+            raise TypeError("vector must be a Vector3D")
         return self.matrix * vector
 
-    def compose(self, other: "Transform3D") -> "Transform3D":
-        """Return a new transformation that applies this transform after another."""
-        return Transform3D(self.matrix * other.matrix)
-
     def to_matrix(self) -> Matrix4x4:
-        """Return the underlying 4x4 matrix."""
+        """Return the underlying 4x4 matrix used by this transform."""
         return self.matrix
+
+    @staticmethod
+    def _validate_scalar(value: object, name: str) -> None:
+        """Validate that a value is a real scalar."""
+        if not isinstance(value, (int, float)):
+            raise TypeError(f"{name} must be a real number")
 
 
 __all__ = ["Transform3D"]
