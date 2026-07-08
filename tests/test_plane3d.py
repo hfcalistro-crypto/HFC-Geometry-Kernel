@@ -1,107 +1,97 @@
 import math
 
-from src.geometry.matrix4x4 import Matrix4x4
-from src.geometry.point3d import Point3D
+import pytest
+
+from src.geometry.line3d import Line3D
 from src.geometry.plane3d import Plane3D
+from src.geometry.point3d import Point3D
 from src.geometry.transform3d import Transform3D
 from src.geometry.vector3d import Vector3D
 
 
-def test_plane3d_from_points_and_coefficients() -> None:
-    p1 = Point3D(0.0, 0.0, 0.0)
-    p2 = Point3D(1.0, 0.0, 0.0)
-    p3 = Point3D(0.0, 1.0, 0.0)
+def test_plane3d_creation_and_constructors() -> None:
+    plane = Plane3D.from_point_normal(Point3D(1.0, 2.0, 3.0), Vector3D(0.0, 0.0, 2.0))
 
-    plane = Plane3D.from_points(p1, p2, p3)
+    assert plane.point == Point3D(1.0, 2.0, 3.0)
     assert plane.normal == Vector3D(0.0, 0.0, 1.0)
-    assert plane.is_point_on_plane(Point3D(0.5, 0.5, 0.0))
 
-    plane_from_coeffs = Plane3D.from_coefficients(0.0, 0.0, 2.0, 0.0)
-    assert plane_from_coeffs.normal == Vector3D(0.0, 0.0, 1.0)
-    assert plane_from_coeffs.is_point_on_plane(Point3D(0.1, 0.1, 0.0))
-
-
-def test_plane3d_normal_and_signed_distance() -> None:
-    plane = Plane3D.from_coefficients(0.0, 0.0, 1.0, -2.0)
-    assert plane.normal == Vector3D(0.0, 0.0, 1.0)
-    assert plane.signed_distance_to_point(Point3D(0.0, 0.0, 3.0)) == 1.0
-    assert plane.distance_to_point(Point3D(0.0, 0.0, 3.0)) == 1.0
-
-
-def test_plane3d_projection() -> None:
-    plane = Plane3D.from_coefficients(0.0, 0.0, 1.0, 0.0)
-    point = Point3D(1.0, 2.0, 3.0)
-    projected = plane.project_point(point)
-
-    assert projected == Point3D(1.0, 2.0, 0.0)
-    assert plane.is_point_on_plane(projected)
-
-
-def test_plane3d_parallel_and_orthogonal() -> None:
-    base_plane = Plane3D.from_coefficients(0.0, 0.0, 1.0, 0.0)
-    parallel_plane = Plane3D.from_coefficients(0.0, 0.0, 2.0, -5.0)
-    orthogonal_plane = Plane3D.from_coefficients(1.0, 0.0, 0.0, -1.0)
-
-    assert base_plane.is_parallel_to(parallel_plane)
-    assert not base_plane.is_orthogonal_to(parallel_plane)
-    assert base_plane.is_orthogonal_to(orthogonal_plane)
-    assert not base_plane.is_parallel_to(orthogonal_plane)
-
-
-def test_plane3d_apply_transform_and_matrix() -> None:
-    plane = Plane3D.from_coefficients(0.0, 0.0, 1.0, -1.0)
-    transform = Transform3D.translation(0.0, 0.0, 2.0)
-    transformed_plane = plane.apply_transform(transform)
-
-    assert transformed_plane.is_point_on_plane(Point3D(0.0, 0.0, 3.0))
-    assert transformed_plane.normal == plane.normal
-
-    matrix = Matrix4x4.from_rows(
-        [
-            [1.0, 0.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0, 0.0],
-            [0.0, 0.0, 1.0, 1.0],
-            [0.0, 0.0, 0.0, 1.0],
-        ]
+    from_points = Plane3D.from_points(
+        Point3D(0.0, 0.0, 0.0),
+        Point3D(1.0, 0.0, 0.0),
+        Point3D(0.0, 1.0, 0.0),
     )
-    matrix_transformed_plane = plane.apply_matrix(matrix)
-    assert matrix_transformed_plane.is_point_on_plane(Point3D(0.0, 0.0, 2.0))
-    assert matrix_transformed_plane.normal == plane.normal
+    assert from_points.normal == Vector3D(0.0, 0.0, 1.0)
+
+    from_equation = Plane3D.from_equation(0.0, 0.0, 1.0, 0.0)
+    assert from_equation == from_points
 
 
-def test_plane3d_equality_and_flip() -> None:
-    plane_a = Plane3D.from_coefficients(0.0, 0.0, 1.0, 0.0)
-    plane_b = Plane3D.from_coefficients(0.0, 0.0, -1.0, 0.0).flip()
+def test_plane3d_normalization_distances_and_projection() -> None:
+    plane = Plane3D.from_point_normal(Point3D(0.0, 0.0, 0.0), Vector3D(0.0, 0.0, 2.0))
 
-    assert plane_a == plane_b
-    assert plane_a.flip() == plane_b
-
-
-def test_plane3d_intersection_line() -> None:
-    first = Plane3D.from_coefficients(0.0, 0.0, 1.0, 0.0)
-    second = Plane3D.from_coefficients(1.0, 0.0, 0.0, 0.0)
-    intersection = first.intersect_with_plane(second)
-
-    assert intersection is not None
-    point_on_line, direction = intersection
-    assert first.is_point_on_plane(point_on_line)
-    assert second.is_point_on_plane(point_on_line)
-    assert direction == Vector3D(0.0, 1.0, 0.0) or direction == Vector3D(0.0, -1.0, 0.0)
+    assert plane.normal == Vector3D(0.0, 0.0, 1.0)
+    assert plane.signed_distance(Point3D(0.0, 0.0, 2.0)) == 2.0
+    assert plane.distance_to_point(Point3D(0.0, 0.0, 2.0)) == 2.0
+    assert plane.contains(Point3D(1.0, 2.0, 0.0)) is True
+    assert plane.contains(Point3D(1.0, 2.0, 1.0)) is False
+    assert plane.project_point(Point3D(1.0, 2.0, 3.0)) == Point3D(1.0, 2.0, 0.0)
+    assert plane.closest_point(Point3D(1.0, 2.0, 3.0)) == Point3D(1.0, 2.0, 0.0)
 
 
-def test_plane3d_invalid_construction() -> None:
-    p1 = Point3D(0.0, 0.0, 0.0)
-    p2 = Point3D(1.0, 1.0, 1.0)
-    p3 = Point3D(2.0, 2.0, 2.0)
+def test_plane3d_intersection_and_angles() -> None:
+    plane = Plane3D.from_point_normal(Point3D(0.0, 0.0, 0.0), Vector3D(0.0, 0.0, 1.0))
+    line = Line3D.from_points(Point3D(0.0, 0.0, 1.0), Point3D(0.0, 0.0, -1.0))
+    parallel_line = Line3D.from_points(Point3D(1.0, 1.0, 1.0), Point3D(2.0, 2.0, 1.0))
+    line_in_plane = Line3D.from_points(Point3D(0.0, 0.0, 0.0), Point3D(1.0, 0.0, 0.0))
+    vertical_line = Line3D.from_points(Point3D(0.0, 0.0, 0.0), Point3D(0.0, 0.0, 1.0))
+    orthogonal_plane = Plane3D.from_point_normal(Point3D(0.0, 0.0, 0.0), Vector3D(1.0, 0.0, 0.0))
 
-    try:
-        Plane3D.from_points(p1, p2, p3)
-        raise AssertionError("Expected ValueError for collinear points")
-    except ValueError:
-        pass
+    assert plane.intersect_line(line) == Point3D(0.0, 0.0, 0.0)
+    assert plane.intersect_line(parallel_line) is None
+    assert math.isclose(plane.angle_to_line(line_in_plane), 0.0)
+    assert math.isclose(plane.angle_to_line(vertical_line), math.pi / 2.0)
+    assert math.isclose(plane.angle_to_plane(orthogonal_plane), math.pi / 2.0)
 
-    try:
-        Plane3D.from_coefficients(0.0, 0.0, 0.0, 1.0)
-        raise AssertionError("Expected ValueError for zero normal")
-    except ValueError:
-        pass
+
+def test_plane3d_transform_copy_and_normalize() -> None:
+    plane = Plane3D.from_point_normal(Point3D(0.0, 0.0, 0.0), Vector3D(0.0, 0.0, 1.0))
+
+    transformed = plane.transform(Transform3D.translation(1.0, 2.0, 3.0))
+    assert transformed.point == Point3D(1.0, 2.0, 3.0)
+    assert transformed.normal == Vector3D(0.0, 0.0, 1.0)
+
+    copied = plane.copy()
+    assert copied == plane
+    assert copied is not plane
+
+    normalized = plane.normalize()
+    assert normalized is plane
+
+
+def test_plane3d_invalid_inputs() -> None:
+    with pytest.raises(TypeError):
+        Plane3D.from_point_normal("invalid", Vector3D(0.0, 0.0, 1.0))
+
+    with pytest.raises(TypeError):
+        Plane3D.from_point_normal(Point3D(0.0, 0.0, 0.0), "invalid")
+
+    with pytest.raises(ValueError):
+        Plane3D.from_point_normal(Point3D(0.0, 0.0, 0.0), Vector3D(0.0, 0.0, 0.0))
+
+    with pytest.raises(ValueError):
+        Plane3D.from_points(
+            Point3D(0.0, 0.0, 0.0),
+            Point3D(1.0, 0.0, 0.0),
+            Point3D(2.0, 0.0, 0.0),
+        )
+
+    plane = Plane3D.from_point_normal(Point3D(0.0, 0.0, 0.0), Vector3D(0.0, 0.0, 1.0))
+
+    with pytest.raises(TypeError):
+        plane.contains("invalid")
+
+    with pytest.raises(TypeError):
+        plane.intersect_line("invalid")
+
+    with pytest.raises(TypeError):
+        plane.angle_to_plane("invalid")
